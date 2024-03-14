@@ -6,15 +6,15 @@ using UnityEngine;
 public class EnemyTrigger : MonoBehaviour
 {
     public delegate void EnemyWin();
-
     public static event EnemyWin OnEnemyWin;
-
     public bool CanDestroy;
-    public GameManager manager;
+    
+    private GameManager manager;
 
     // Start is called before the first frame update
     void Start()
     {
+        manager = FindObjectOfType<GameManager>();
         CanDestroy = true;
     }
 

@@ -9,17 +9,20 @@ public class Player : MonoBehaviour
   public float shootDelay = 1f;
   public Transform shottingOffset;
   public float speed;
-  public GameManager _manager;
   public int init_life = 3;
-  private int life;
+  private int life = 1;
   private float canShoot = 0f;
   public AudioSource shootSound;
+  public AudioSource explosion;
+  
+  private GameManager _manager;
 
   public delegate void EnemyWin();
   public static event EnemyWin OnEnemyWin;
 
   private void Start()
   {
+    _manager = FindObjectOfType<GameManager>() ;
     life = init_life;
   }
 
@@ -40,6 +43,7 @@ public class Player : MonoBehaviour
     {
       if (canShoot < 0)
       {
+        GetComponent<Animator>().SetTrigger("Shoot");
         shootSound.Play();
         canShoot = shootDelay;
         GameObject shot = Instantiate(bullet, shottingOffset.position, Quaternion.identity);
@@ -64,6 +68,7 @@ public class Player : MonoBehaviour
     if (life == 0)
     {
       OnEnemyWin.Invoke();
+      explosion.Play();
       _manager.EndGame();
     }
   }

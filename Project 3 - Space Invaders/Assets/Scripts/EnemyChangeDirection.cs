@@ -5,11 +5,11 @@ using UnityEngine;
 
 public class EnemyChangeDirection : MonoBehaviour
 {
-    public GameManager manager;
+    private GameManager manager;
     // Start is called before the first frame update
     void Start()
     {
-        
+        manager = FindObjectOfType<GameManager>();
     }
 
     // Update is called once per frame

@@ -16,10 +16,12 @@ public class Enemy : MonoBehaviour
     public int life = 1;
 
     public int pointWorth = 10;
+    private AudioSource explosion;
     
     // Start is called before the first frame update
     private void Start()
     {
+        explosion = GameObject.Find("explosion").GetComponent<AudioSource>();
         Player.OnEnemyWin += KillEnemy;
         EnemyTrigger.OnEnemyWin += KillEnemy;
         if (gameObject.CompareTag("enemy"))
@@ -52,6 +54,7 @@ public class Enemy : MonoBehaviour
             {
                 OnEnemyDied.Invoke(pointWorth, this);
                 GetComponent<Animator>().SetTrigger("died");
+                explosion.Play();
             }
         }
     }

@@ -1,8 +1,12 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 public class GameManager : MonoBehaviour
 {
@@ -15,7 +19,6 @@ public class GameManager : MonoBehaviour
     public bool goDown;
     public TMP_Text ScoreText;
     public TMP_Text hi_scoreText;
-    public GameObject UI;
     public GameObject player;
     public List<Enemy> enemyList;
     public float enemyShootDelay;
@@ -35,13 +38,22 @@ public class GameManager : MonoBehaviour
     private int hi_score;
     private float init_SecondPerStep;
     private GameObject _boss;
-    void Start()
+    private bool isCreditScene = false;
+    private static bool isAlreadyInstantiate = false;
+    
+    private void Awake()
     {
-        p = player.GetComponent<Player>();
+        if (isAlreadyInstantiate)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            isAlreadyInstantiate = true;
+        }
+        DontDestroyOnLoad(gameObject);
         init_SecondPerStep = secondPerStep;
-        lifeText.gameObject.SetActive(false);
         enemyList = new List<Enemy>();
-        player.SetActive(false);
         isRunning = false;
         Enemy.OnEnemyDied += AddPoint;
         Enemy.OnEnemyStart += AddEnemyList;
@@ -49,6 +61,8 @@ public class GameManager : MonoBehaviour
         goLeft = false;
         hi_score = PlayerPrefs.GetInt("hi_score");
         hi_scoreText.text = "HI_SCORE\n" + hi_score.ToString("D4");
+        score = 0;
+        ScoreText.text = "SCORE\n" + score.ToString("D4");
     }
 
     private void AddEnemyList(Enemy enemy)
@@ -58,7 +72,7 @@ public class GameManager : MonoBehaviour
 
     private void AddPoint(int point, Enemy enemy)
     {
-        explosionSound.Play();
+        //explosionSound.Play();
         enemyList.Remove(enemy);
         secondPerStep *= stepIncrease;
         score += point;
@@ -81,39 +95,41 @@ public class GameManager : MonoBehaviour
             yield return new WaitForSeconds(enemyShootDelay);
             if (enemyList.Count > 0)
             {
-                enemyList[Random.Range(0, enemyList.Count)].Shoot();
+                Enemy enemy = enemyList[Random.Range(0, enemyList.Count)];
+                enemy.GetComponent<Animator>().SetTrigger("shoot");
+                enemy.Shoot();
                 enemyShootSound.Play();
             }
         }
     }
 
+    public void SetIsCreditsScene(bool isCreditsScene)
+    {
+        isCreditScene = isCreditsScene;
+    }
+
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.R))
+        if (!isCreditScene)
         {
-            PlayerPrefs.SetInt("hi_score", 0);
-            hi_score = 0;
-            hi_scoreText.text = "HI_SCORE\n" + hi_score.ToString("D4");
-        } 
-        if (!isRunning)            
-        {
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (Input.GetKeyDown(KeyCode.R))
             {
-                Hide(true);
-                StartGame();
-            }
-        }
-        else
-        {
-            if (enemyList.Count == 0 && p.getLife() > 0)
+                PlayerPrefs.SetInt("hi_score", 0);
+                hi_score = 0;
+                hi_scoreText.text = "HI_SCORE\n" + hi_score.ToString("D4");
+            } 
+            if (isRunning)            
             {
-                if (_boss.IsDestroyed())
+                if (enemyList.Count == 0 && p.getLife() > 0)
                 {
-                    _boss = Instantiate(Boss, bossSpawnPosition);
+                    if (_boss.IsDestroyed())
+                    {
+                        _boss = Instantiate(Boss, bossSpawnPosition);
+                    }
+                    secondPerStep = init_SecondPerStep;
+                    InstantiateEnemy();
                 }
-                secondPerStep = init_SecondPerStep;
-                InstantiateEnemy();
             }
         }
     }
@@ -126,7 +142,7 @@ public class GameManager : MonoBehaviour
         SetLife();
         lifeText.gameObject.SetActive(true);
         score = 0;
-        ScoreText.text = "score\n" + score.ToString("D4");
+        UpdateScore();
         isRunning = true;
         goDown = false;
         goLeft = false;
@@ -141,12 +157,6 @@ public class GameManager : MonoBehaviour
         lifeText.text = "LIFE\nx" + p.getLife();
     }
 
-    public void Hide(bool hide)
-    {
-        UI.SetActive(!hide);
-        player.SetActive(hide);
-    }
-    
     private void InstantiateEnemy()
     {
         Vector3 pos;
@@ -187,26 +197,29 @@ public class GameManager : MonoBehaviour
 
     public void MoveStep()
     {
-        Vector3 pos;
-        pos = enemyRoot.transform.position;
-        if (goDown)
+        if (isRunning)
         {
-            goDown = false;
-            pos.y -= 0.5f;
-            enemyRoot.transform.position = pos;
-            goLeft = !goLeft;
-        }
-        else
-        {
-            if (goLeft)
+            Vector3 pos;
+            pos = enemyRoot.transform.position;
+            if (goDown)
             {
-                pos.x -= step;
+                goDown = false;
+                pos.y -= 0.5f;
                 enemyRoot.transform.position = pos;
+                goLeft = !goLeft;
             }
             else
             {
-                pos.x += step;
-                enemyRoot.transform.position = pos;
+                if (goLeft)
+                {
+                    pos.x -= step;
+                    enemyRoot.transform.position = pos;
+                }
+                else
+                {
+                    pos.x += step;
+                    enemyRoot.transform.position = pos;
+                }
             }
         }
     }
@@ -222,21 +235,131 @@ public class GameManager : MonoBehaviour
         {
             Destroy(_boss);
         }
-        lifeText.gameObject.SetActive(false);
+        foreach (Enemy enemy in enemyList)
+        {
+            enemy.KillEnemy();
+        }
         enemyList = new List<Enemy>();
-        player.SetActive(false);
         isRunning = false;
         goDown = false;
         goLeft = false;
-        UI.SetActive(true);
         if (score > hi_score)
         {
             hi_score = score;
             PlayerPrefs.SetInt("hi_score", hi_score);
             hi_scoreText.text = "HI_SCORE\n" + hi_score.ToString("D4");
         }
+        
         StopCoroutine(EnemyMouvement());
         StopCoroutine(RandomEnemyShoot());
         Destroy(barricadeObject);
+
+        LoadCreditsScene();
+    }
+
+    public void LoadCreditsScene()
+    {
+        SceneManager.LoadScene("Credits Scene");
+        isCreditScene = true;
+    }
+
+    public void ButtonStart()
+    {
+        SceneManager.LoadScene("Game Scene");
+        StartCoroutine(FindObjectGameScene());
+    }
+
+    IEnumerator FindObjectGameScene()
+    {
+        GameObject temp = GameObject.Find("BossSpawnPosition");
+        while (temp == null)
+        {
+            yield return null;
+            temp = GameObject.Find("BossSpawnPosition");
+        }
+        bossSpawnPosition = temp.GetComponent<Transform>();
+        
+        temp = GameObject.Find("BarricadeSpawn");
+        while (temp == null)
+        {
+            yield return null;
+            temp = GameObject.Find("BarricadeSpawn");
+        }
+        barricadeSpawnPosition = temp.GetComponent<Transform>();
+        
+        temp = GameObject.Find("LifeText");
+        while (temp == null)
+        {
+            yield return null;
+            temp = GameObject.Find("LifeText");
+        }
+        lifeText = temp.GetComponent<TMP_Text>();
+        
+        temp = GameObject.Find("Score");
+        while (temp == null)
+        {
+            yield return null;
+            temp = GameObject.Find("Score");
+        }
+        ScoreText = temp.GetComponent<TMP_Text>();
+        
+        temp = GameObject.Find("Hi-score");
+        while (temp == null)
+        {
+            yield return null;
+            temp = GameObject.Find("Hi-score");
+        }
+        hi_scoreText = temp.GetComponent<TMP_Text>();
+        
+        temp = GameObject.Find("Player");
+        while (temp == null)
+        {
+            yield return null;
+            temp = GameObject.Find("Player");
+        }
+        player = temp;
+        
+        temp = GameObject.Find("EnemyHandler");
+        while (temp == null)
+        {
+            yield return null;
+            temp = GameObject.Find("EnemyHandler");
+        }
+        enemyRoot = temp;
+        
+        p = player.GetComponent<Player>();
+        StartGame();
+    }
+
+    public IEnumerator FindScore()
+    {
+        GameObject temp = GameObject.Find("Score");
+        while (temp == null)
+        {
+            yield return null;
+            temp = GameObject.Find("Score");
+        }
+        ScoreText = temp.GetComponent<TMP_Text>();
+        
+        temp = GameObject.Find("Hi-score");
+        while (temp == null)
+        {
+            yield return null;
+            temp = GameObject.Find("Hi-score");
+        }
+        hi_scoreText = temp.GetComponent<TMP_Text>();
+        UpdateScore();
+    }
+    public void UpdateScore()
+    {
+        hi_scoreText.text = "HI_SCORE\n" + hi_score.ToString("D4");
+        ScoreText.text = "SCORE\n" + score.ToString("D4");
+    }
+
+    public void LoadMainMenu()
+    {
+        SceneManager.LoadScene("Main Menu");
+        SetIsCreditsScene(false);
+        StartCoroutine(FindScore());
     }
 }
