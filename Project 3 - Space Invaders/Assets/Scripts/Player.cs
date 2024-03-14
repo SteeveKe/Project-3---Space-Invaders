@@ -67,8 +67,8 @@ public class Player : MonoBehaviour
     _manager.SetLife();
     if (life == 0)
     {
-      OnEnemyWin.Invoke();
       explosion.Play();
+      OnEnemyWin.Invoke();
       _manager.EndGame();
     }
   }
